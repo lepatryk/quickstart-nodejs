@@ -1,8 +1,10 @@
 // Reference mocha-typescript's global definitions:
 // eslint-disable-next-line spaced-comment
 /// <reference path='../node_modules/mocha-typescript/globals.d.ts' />
+import {Helper} from '../lib/helper';
 import * as firebase from '@firebase/testing';
 import * as fs from 'fs';
+import {expect} from 'chai';
 
 /*
  * ============
@@ -61,55 +63,25 @@ class TestingBase {
 
 // eslint-disable-next-line no-unused-vars
 @suite class MyApp extends TestingBase {
-  @test async 'require users to log in before creating a profile'() {
+  @test async 'test get all data'() {
     const db = authedApp(null);
-    const profile = db.collection('users').doc('alice');
-    await firebase.assertFails(profile.set({birthday: 'January 1'}));
+    await firebase.assertSucceeds(db.doc('test/a').set({foo: 'bar'}));
+    await firebase.assertSucceeds(db.doc('test/b').set({bar: 'baz'}));
+    await firebase.assertSucceeds(db.doc('test/c').set({baz: 'bzz'}));
+
+    const helper = new Helper(<any>db);
+    const data = await helper.getAllData();
+    expect(data).to.deep.equal([{foo: 'bar'}, {bar: 'baz'}, {baz: 'bzz'}]);
   }
 
-  @test async 'should let anyone create their own profile'() {
-    const db = authedApp({uid: 'alice'});
-    const profile = db.collection('users').doc('alice');
-    await firebase.assertSucceeds(profile.set({birthday: 'January 1'}));
-  }
-
-  @test async 'should let anyone read any profile'() {
+  @test async 'test get top two docs'() {
     const db = authedApp(null);
-    const profile = db.collection('users').doc('alice');
-    await firebase.assertSucceeds(profile.get());
-  }
+    await firebase.assertSucceeds(db.doc('test/a').set({foo: 'bar'}));
+    await firebase.assertSucceeds(db.doc('test/b').set({bar: 'baz'}));
+    await firebase.assertSucceeds(db.doc('test/c').set({baz: 'bzz'}));
 
-  @test async 'should let anyone create a room'() {
-    const db = authedApp({uid: 'alice'});
-    const room = db.collection('rooms').doc('firebase');
-    await firebase.assertSucceeds(room.set({
-      owner: 'alice',
-      topic: 'All Things Firebase',
-    }));
-  }
-
-  @test async 'should force people to name themselves as room owner when creating a room'() {
-    const db = authedApp({uid: 'alice'});
-    const room = db.collection('rooms').doc('firebase');
-    await firebase.assertFails(room.set({
-      owner: 'scott',
-      topic: 'Firebase Rocks!',
-    }));
-  }
-
-  @test async 'should not let one user steal a room from another user'() {
-    const alice = authedApp({uid: 'alice'});
-    const bob = authedApp({uid: 'bob'});
-
-    await firebase.assertSucceeds(bob.collection('rooms').doc('snow').set({
-      owner: 'bob',
-      topic: 'All Things Snowboarding',
-    }));
-
-    await firebase.assertFails(alice.collection('rooms').doc('snow').set({
-      owner: 'alice',
-      topic: 'skiing > snowboarding',
-    }));
+    const helper = new Helper(<any>db);
+    await helper.getFirstTwoDocs();
   }
 }
 /* eslint-enable require-jsdoc */
